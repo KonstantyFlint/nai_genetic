@@ -13,7 +13,7 @@ bool extract_bit(very_long num, int index) {
     return (num >> index) & 1;
 }
 
-vector<bool> convert(pair<very_long, very_long> pair) {
+vector<bool> encode_chromosome(pair<very_long, very_long> pair) {
     vector<bool> out;
     for (int i = 0; i < 64; i++) {
         out.push_back(extract_bit(pair.first, 63 - i));
@@ -24,7 +24,7 @@ vector<bool> convert(pair<very_long, very_long> pair) {
     return out;
 }
 
-pair<very_long, very_long> convert(vector<bool> bits) {
+pair<very_long, very_long> decode_chromosome(vector<bool> bits) {
     very_long first = 0;
     very_long second = 0;
 
@@ -39,7 +39,7 @@ pair<very_long, very_long> convert(vector<bool> bits) {
     return {first, second};
 }
 
-double long_to_double(very_long num) {
+double cast_to_domain(very_long num) {
     return num / 1.8446744e+18;
 }
 
@@ -47,30 +47,29 @@ double himmelblau(double x, double y) {
     return (x * x + y - 11) * (x * x + y - 11) + (x + y * y - 7) * (x + y * y - 7);
 }
 
-double fitness(vector<bool> chromosome) {
-    auto fenotype = convert(chromosome);
-    double x = long_to_double(fenotype.first);
-    double y = long_to_double(fenotype.second);
+double himmelblau_fitness(vector<bool> chromosome) {
+    auto fenotype = decode_chromosome(chromosome);
+    double x = cast_to_domain(fenotype.first);
+    double y = cast_to_domain(fenotype.second);
     return 1 / (himmelblau(x, y) + 1);
 }
 
 void test_converter() {
     pair<very_long, very_long> a;
-    //cin >> a.first >> a.second;
     a.first = 5.5340232e+18;
     a.second = 3.6893488e+18;
 
-    vector<bool> bits = convert(a);
-    pair<very_long, very_long> b = convert(bits);
+    vector<bool> bits = encode_chromosome(a);
+    pair<very_long, very_long> b = decode_chromosome(bits);
     cout << b.first << " " << b.second << "\n";
 
-    cout << fitness(bits) << "\n";
+    cout << himmelblau_fitness(bits) << "\n";
 }
 
-vector<bool> mutate(vector<bool> gene) {
-    uniform_int_distribution<int> dist(0, gene.size() - 1);
+vector<bool> mutate(vector<bool> chromosome) {
+    uniform_int_distribution<int> dist(0, chromosome.size() - 1);
     int index = dist(device);
-    auto mutated = gene;
+    auto mutated = chromosome;
     mutated[index] = !mutated[index];
     return mutated;
 }
@@ -120,7 +119,7 @@ pair<int, int> tournament_selection(vector<double> fitness_vector) {
     return {a, b};
 }
 
-vector<double> calculate_fitness(vector<vector<bool>> population, function<double(vector<bool>)> fitness_function) {
+vector<double> calculate_fitness(vector<vector<bool>> population, function<double(vector<bool>)> fitness) {
     vector<double> out;
     out.reserve(population.size());
     for (auto &i : population) {
@@ -129,10 +128,10 @@ vector<double> calculate_fitness(vector<vector<bool>> population, function<doubl
     return out;
 }
 
-vector<vector<bool>> genetic_algorithm(vector<vector<bool>> initial_population, int iterations) {
+vector<vector<bool>> genetic_algorithm(vector<vector<bool>> initial_population, int iterations, function<double(vector<bool>)> fitness_function) {
     auto population = initial_population;
     for (int i = 0; i < iterations; i++) {
-        vector<double> fitness_vector = calculate_fitness(population, fitness);
+        vector<double> fitness_vector = calculate_fitness(population, fitness_function);
         for (int i = 0; i < fitness_vector.size(); i++) {
             cout << fitness_vector[i] << " ";
         }
@@ -151,5 +150,6 @@ vector<vector<bool>> genetic_algorithm(vector<vector<bool>> initial_population, 
 }
 
 int main() {
-    genetic_algorithm(generate_population(20, 128), 100);
+	auto population = generate_population(20, 128);
+    genetic_algorithm(population, 100, himmelblau_fitness);
 }
